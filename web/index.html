@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>당기면 마법처럼 펼쳐지는 입체도형 전개도 (Magic Pop-up Geometry)</title>
+  <!-- Tailwind CSS CDN (Play CDN 콘솔 안내 경고 필터링) -->
+  <script>
+    const _warn = console.warn;
+    console.warn = function(...args) {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+      _warn.apply(console, args);
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js & Controls CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Canvas Confetti for Quiz -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <!-- Pretendard 폰트 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-['Pretendard',sans-serif] min-h-screen flex flex-col select-none overflow-x-hidden">
+
+  <!-- 상단 네비게이션 헤더 -->
+  <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between shadow-sm">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-lg lg:text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+          <span>당기면 팝업! 신기한 입체도형</span>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">초등 수학 교구</span>
+        </h1>
+        <p class="text-xs text-slate-500 hidden sm:block">평면 전개도(2D)와 입체도형(3D)의 유기적 연결 원리를 깨우치는 스트링 팝업 시뮬레이터</p>
+      </div>
+    </div>
+
+    <!-- 우측 모드 전환 메뉴 바 -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <!-- 학년/단원 필터 드롭다운 -->
+      <select id="curriculum-filter" class="px-2.5 py-1.5 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        <option value="all">전체 교과 단원 보기</option>
+        <option value="grade5-2">초등 5-2: 직육면체·정육면체</option>
+        <option value="grade6-1">초등 6-1: 각기둥과 각뿔</option>
+        <option value="grade6-2">초등 6-2: 원기둥·원뿔·구</option>
+      </select>
+
+      <button id="btn-math-lab" class="px-3 py-1.5 text-xs lg:text-sm font-bold rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition flex items-center gap-1.5 shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        <span>원기둥 수학 랩</span>
+      </button>
+
+      <button id="btn-lab-wrong-net" class="px-3 py-1.5 text-xs lg:text-sm font-bold rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition flex items-center gap-1.5 shadow-sm">
+        <span>⚠️</span>
+        <span>오답 전개도 실험실</span>
+      </button>
+
+      <button id="btn-quiz-modal" class="px-3 py-1.5 text-xs lg:text-sm font-bold rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition flex items-center gap-1.5 shadow-sm">
+        <span>🎯</span>
+        <span>스피드 퀴즈</span>
+      </button>
+
+      <button id="btn-diy-modal" class="px-3 py-1.5 text-xs lg:text-sm font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition flex items-center gap-1.5 shadow-sm shadow-indigo-200">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+        <span>A4 도안 인쇄</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 레이아웃 -->
+  <main class="flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto p-3 lg:p-6 gap-4">
+    
+    <!-- 좌측/중앙: 3D 인터랙티브 시뮬레이터 구역 -->
+    <section class="flex-1 flex flex-col bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden relative">
+      
+      <!-- 도형 선택 탭 바 -->
+      <div class="bg-slate-100 p-2 border-b border-slate-200 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
+        <div class="flex items-center gap-1.5">
+          <button class="shape-tab active flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition shadow-sm" data-shape="cube">
+            <span>📦</span> 정육면체
+          </button>
+          <button class="shape-tab flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition text-slate-600 hover:bg-white/80" data-shape="cuboid">
+            <span>🎁</span> 직육면체
+          </button>
+          <button class="shape-tab flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition text-slate-600 hover:bg-white/80" data-shape="triPrism">
+            <span>📐</span> 삼각기둥
+          </button>
+          <button class="shape-tab flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition text-slate-600 hover:bg-white/80" data-shape="hexPyramid">
+            <span>⛺</span> 육각뿔
+          </button>
+          <button class="shape-tab flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition text-slate-600 hover:bg-white/80" data-shape="cylinder">
+            <span>🥫</span> 원기둥
+          </button>
+        </div>
+
+        <!-- 정육면체 11종 전개도 선택 드롭다운 (정육면체 선택 시 활성화) -->
+        <div id="cube-net-variant-box" class="flex items-center gap-1.5 pl-2 border-l border-slate-300">
+          <span class="text-[11px] font-bold text-slate-500 hidden sm:inline">전개도 유형:</span>
+          <select id="cube-net-select" class="text-xs font-bold py-1 px-2 rounded-lg bg-white border border-slate-300 text-indigo-700 focus:outline-none">
+            <option value="net1">지그재그형 (대표 교구형)</option>
+            <option value="net2">1-4-1 십자형 기본</option>
+            <option value="net3">2-3-1 계단형</option>
+            <option value="net4">2-2-2 지그재그형</option>
+            <option value="net5">3-3 더블형</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 3D 캔버스 영역 -->
+      <div id="canvas-container" class="relative flex-1 min-h-[400px] lg:min-h-[480px] bg-gradient-to-b from-slate-100 via-sky-50/40 to-slate-100 cursor-grab active:cursor-grabbing">
+        <canvas id="webgl-canvas" class="w-full h-full block"></canvas>
+        
+        <!-- 3D 뷰어 좌상단 안내 태그 -->
+        <div class="absolute top-3 left-3 bg-white/85 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-600 shadow-sm flex items-center gap-2 pointer-events-none">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>마우스로 360° 회전 및 휠 줌 / 당김 손잡이 조작</span>
+        </div>
+
+        <!-- 3D 뷰어 우상단 컨트롤 툴바 (요소 분리 분석 & 뷰어 옵션) -->
+        <div class="absolute top-3 right-3 flex flex-col gap-1.5 z-10">
+          <button id="toggle-wireframe" class="p-2 rounded-xl bg-white/90 border border-slate-200 shadow-sm hover:bg-white text-slate-700 transition" title="투명 겨냥도 모드">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </button>
+          <button id="toggle-strings" class="p-2 rounded-xl bg-amber-50 border border-amber-300 shadow-sm hover:bg-amber-100 text-amber-700 transition" title="실(String) 궤적 보기">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          </button>
+          <button id="toggle-vertices" class="p-2 rounded-xl bg-white/90 border border-slate-200 shadow-sm hover:bg-white text-slate-700 transition" title="꼭짓점(점) 강조 표시">
+            <span class="text-xs font-black">●</span>
+          </button>
+          <button id="reset-camera" class="p-2 rounded-xl bg-white/90 border border-slate-200 shadow-sm hover:bg-white text-slate-700 transition" title="시점 초기화">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+
+        <!-- 현재 도형 상태 뱃지 및 오답 경고 배너 -->
+        <div id="status-badge" class="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-indigo-700 shadow-md">
+          평면 전개도 (2D 상태)
+        </div>
+        <div id="error-alert-badge" class="hidden absolute top-14 left-1/2 -translate-x-1/2 bg-rose-600 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg animate-bounce flex items-center gap-1.5 z-20">
+          <span>⚠️ 면이 서로 겹쳐서 입체가 되지 않습니다!</span>
+        </div>
+      </div>
+
+      <!-- 하단: 가상 스트링 텐션(PULL) 컨트롤러 -->
+      <div class="bg-gradient-to-r from-slate-50 via-indigo-50/50 to-slate-50 p-4 border-t border-slate-200 flex flex-col gap-3">
+        
+        <div class="flex items-center justify-between text-xs font-bold text-slate-600">
+          <span class="flex items-center gap-1.5 text-slate-500">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span> 2D 평면 전개도 (0%)
+          </span>
+          <span id="tension-percentage" class="text-indigo-600 text-sm font-extrabold bg-indigo-100 px-3 py-0.5 rounded-full">
+            0% (펼쳐짐)
+          </span>
+          <span class="flex items-center gap-1.5 text-indigo-600">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping"></span> 3D 입체 완성 (100%)
+          </span>
+        </div>
+
+        <!-- 슬라이더 영역 -->
+        <div class="relative flex items-center gap-3">
+          <input id="pull-slider" type="range" min="0" max="100" value="0" step="0.5" 
+                 class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 transition">
+        </div>
+
+        <div class="flex items-center justify-between gap-2 pt-1 flex-wrap">
+          <!-- 퀵 스냅 버튼 -->
+          <div class="flex items-center gap-2">
+            <button id="btn-snap-flat" class="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition shadow-sm">
+              펼치기 (2D)
+            </button>
+            <button id="btn-snap-solid" class="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition shadow-sm">
+              접기 (3D)
+            </button>
+            <button id="btn-auto-animate" class="px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-sm">
+              ▶ 자동 재생
+            </button>
+          </div>
+
+          <!-- 실제 교구 손맛을 느낄 수 있는 가상 'PULL 손잡이' -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-500 hidden sm:inline">줄을 마우스로 당겨보세요 ➔</span>
+            <button id="btn-pull-tag" class="group relative px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs sm:text-sm tracking-wider uppercase shadow-md shadow-orange-300 transition-all active:scale-95 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+              <span>PULL (당기기)</span>
+              <svg class="w-4 h-4 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- 우측: 도형 정보 & 초등 교과 연계 분석 패널 -->
+    <aside class="w-full lg:w-80 xl:w-96 flex flex-col gap-4">
+      
+      <!-- 도형 수학적 속성 카드 -->
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-5 flex flex-col gap-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <span id="shape-grade-badge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-700">초등 5학년 2학기 5단원</span>
+            <h2 id="shape-title" class="text-xl font-black text-slate-800 mt-1">정육면체 (Cube)</h2>
+          </div>
+          <div id="shape-icon-large" class="text-3xl p-2 bg-indigo-50 rounded-xl">📦</div>
+        </div>
+
+        <!-- 3대 구성 요소 카운트 배지 -->
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+            <div class="text-xs text-slate-400 font-semibold">면 (Faces)</div>
+            <div id="count-faces" class="text-lg font-black text-indigo-600 mt-0.5">6개</div>
+            <div id="type-faces" class="text-[10px] text-slate-500 truncate">합동 정사각형</div>
+          </div>
+          <div class="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+            <div class="text-xs text-slate-400 font-semibold">모서리 (Edges)</div>
+            <div id="count-edges" class="text-lg font-black text-emerald-600 mt-0.5">12개</div>
+            <div class="text-[10px] text-slate-500">길이 모두 동일</div>
+          </div>
+          <div class="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+            <div class="text-xs text-slate-400 font-semibold">꼭짓점 (Vertices)</div>
+            <div id="count-vertices" class="text-lg font-black text-amber-600 mt-0.5">8개</div>
+            <div class="text-[10px] text-slate-500">한 꼭짓점에 3개면</div>
+          </div>
+        </div>
+
+        <!-- 스트링 힌지 메커니즘 설명 -->
+        <div class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3.5 text-xs text-amber-900 flex flex-col gap-1.5">
+          <div class="font-bold flex items-center gap-1 text-amber-800">
+            <span>🧵</span>
+            <span>스트링 텐션 힌지 메커니즘</span>
+          </div>
+          <p id="shape-mechanism-desc" class="leading-relaxed text-amber-800/90">
+            외곽 꼭짓점 펀칭 홀에 X자형으로 실을 통과시켜, 하단 손잡이를 당기면 6개의 면이 동시에 중심점으로 오므라들며 정육면체 상자가 완성됩니다.
+          </p>
+        </div>
+
+        <!-- 초등 교과 핵심 학습 포인트 -->
+        <div class="flex flex-col gap-2">
+          <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>교과서 핵심 관찰 포인트</span>
+          </div>
+          <ul id="shape-edu-points" class="text-xs text-slate-600 space-y-1.5 pl-3 list-disc">
+            <li>마주보는 면끼리 서로 평행하고 크기가 완전히 같음을 확인합니다.</li>
+            <li>줄을 당기며 만나는 모서리끼리 길이가 일치하는지 관찰합니다.</li>
+            <li>정육면체 전개도는 총 11가지 형태가 성립함을 증명합니다.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 교구 DIY 4단계 퀵 가이드 -->
+      <div class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-2xl p-5 shadow-lg flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-indigo-200 flex items-center gap-1.5">
+            <span>✂️</span> 집에서 만드는 4단계 교구 가이드
+          </h3>
+          <span class="text-[10px] bg-indigo-800/80 text-indigo-200 px-2 py-0.5 rounded">DIY TIP</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-white/10 p-2.5 rounded-xl border border-white/10">
+            <span class="font-bold text-amber-300 block mb-0.5">1. 도안 작도</span>
+            <span class="text-[11px] text-slate-300">180~220g 두꺼운 도화지에 작도 후 절단</span>
+          </div>
+          <div class="bg-white/10 p-2.5 rounded-xl border border-white/10">
+            <span class="font-bold text-emerald-300 block mb-0.5">2. 접는 선 칼선</span>
+            <span class="text-[11px] text-slate-300">칼등이나 볼펜으로 눌러 자국 내기</span>
+          </div>
+          <div class="bg-white/10 p-2.5 rounded-xl border border-white/10">
+            <span class="font-bold text-sky-300 block mb-0.5">3. 펀치 타공</span>
+            <span class="text-[11px] text-slate-300">꼭짓점 5~8mm 안쪽에 3~5mm 구멍</span>
+          </div>
+          <div class="bg-white/10 p-2.5 rounded-xl border border-white/10">
+            <span class="font-bold text-rose-300 block mb-0.5">4. 실 꿰기 & PULL</span>
+            <span class="text-[11px] text-slate-300">면끈 관통 후 손잡이 테이핑 연결</span>
+          </div>
+        </div>
+        <button id="btn-open-diy-from-card" class="w-full mt-1 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs transition text-center shadow-md shadow-indigo-950/40">
+          실제 크기 도안 보기 및 인쇄하기 ➔
+        </button>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- ======================= 모달 1: 원기둥 수학 탐구 랩 ($2\pi r$) ======================= -->
+  <div id="modal-math-lab" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-5 animate-scaleUp">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg font-bold">📏</div>
+          <div>
+            <h3 class="text-lg font-black text-slate-800">원기둥 전개도 수학 공식 실시간 랩</h3>
+            <p class="text-xs text-slate-500">밑면의 원주($2\pi r$)와 옆면 직사각형 가로 길이의 일치 관계 증명</p>
+          </div>
+        </div>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- 원기둥 파라미터 조절 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+        <div class="flex flex-col gap-1.5">
+          <div class="flex justify-between text-xs font-bold text-slate-600">
+            <span>밑면 반지름 (r)</span>
+            <span id="val-radius" class="text-indigo-600 font-extrabold">2.5 cm</span>
+          </div>
+          <input id="slider-radius" type="range" min="1.5" max="5.0" step="0.1" value="2.5" class="w-full accent-indigo-600">
+          <span class="text-[11px] text-slate-400">영상 속 실제 교구 실측 치수: 2.5cm</span>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <div class="flex justify-between text-xs font-bold text-slate-600">
+            <span>원기둥 높이 (h)</span>
+            <span id="val-height" class="text-indigo-600 font-extrabold">9.0 cm</span>
+          </div>
+          <input id="slider-height" type="range" min="5.0" max="15.0" step="0.5" value="9.0" class="w-full accent-indigo-600">
+          <span class="text-[11px] text-slate-400">영상 속 실제 교구 높이: 9.0cm</span>
+        </div>
+      </div>
+
+      <!-- 수학적 계산 결과 디스플레이 -->
+      <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex flex-col gap-3">
+        <div class="text-xs font-bold text-indigo-900 flex items-center justify-between">
+          <span>📐 원주 계산 공식 ($2 \times \pi \times r$)</span>
+          <span class="text-[11px] text-indigo-600 font-semibold">$\pi \approx 3.14$ 적용</span>
+        </div>
+        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-indigo-100 font-mono text-sm">
+          <span class="text-slate-600">밑면 원의 둘레:</span>
+          <span id="calc-formula" class="font-bold text-indigo-700">2 × 3.14 × 2.5 = 15.70 cm</span>
+        </div>
+        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-indigo-100 font-mono text-sm">
+          <span class="text-slate-600">필요한 직사각형 가로 순수 길이:</span>
+          <span id="calc-width-exact" class="font-bold text-emerald-600">15.70 cm</span>
+        </div>
+        <div class="text-xs text-indigo-800/80 bg-indigo-100/60 p-2.5 rounded-xl leading-relaxed">
+          💡 <strong>교구 제작 팁:</strong> 영상 속 실제 도안은 종이가 겹쳐서 원기둥 형태로 안정적으로 맞물리도록 약 <strong>2.3cm의 여유분(접착/오버랩)</strong>을 포함하여 <strong>총 18cm</strong>로 재단되었습니다.
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button class="btn-close-modal px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition">
+          확인 완료
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 모달 2: 스피드 전개도 맞히기 퀴즈 ======================= -->
+  <div id="modal-quiz" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-5 animate-scaleUp">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg font-bold">🎯</div>
+          <div>
+            <h3 class="text-lg font-black text-slate-800">스피드 전개도 맞히기 퀴즈</h3>
+            <p class="text-xs text-slate-500">평면 전개도를 머릿속으로 접어보고, 줄을 당겨 검증해보세요!</p>
+          </div>
+        </div>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="quiz-question-box" class="flex flex-col gap-4">
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col items-center gap-2">
+          <span class="text-xs font-bold text-slate-500">Q. 아래 전개도의 끈을 당기면 어떤 입체도형이 완성될까요?</span>
+          <div id="quiz-diagram-preview" class="w-36 h-36 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-4xl shadow-sm">
+            📐
+          </div>
+          <span id="quiz-hint" class="text-xs text-indigo-600 font-semibold">힌트: 밑면이 정삼각형 2개이고 옆면이 직사각형 3개입니다.</span>
+        </div>
+
+        <div id="quiz-options" class="grid grid-cols-2 gap-2.5"></div>
+        <div id="quiz-feedback" class="hidden p-3 rounded-xl text-center text-xs font-bold"></div>
+      </div>
+
+      <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+        <span id="quiz-score" class="text-xs font-bold text-slate-500">점수: 0 / 3</span>
+        <button id="btn-next-quiz" class="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition">
+          다음 문제 ➔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 모달 3: 오답 전개도 실험실 (활동 3) ======================= -->
+  <div id="modal-wrong-net" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-5 animate-scaleUp">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-lg font-bold">⚠️</div>
+          <div>
+            <h3 class="text-lg font-black text-slate-800">오답 전개도 실험실 (왜 접히지 않을까?)</h3>
+            <p class="text-xs text-slate-500">잘못 만들어진 전개도로 줄을 당겨보며 물리적 오류를 발견합니다.</p>
+          </div>
+        </div>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <span class="text-xs font-bold text-slate-600">테스트할 오답 전개도 선택:</span>
+        <div class="grid grid-cols-2 gap-2">
+          <button class="btn-wrong-case active p-3 rounded-xl border-2 border-rose-400 bg-rose-50 text-left" data-wrong="overlap">
+            <span class="font-bold text-xs text-rose-800 block">실험 1. 면이 겹치는 전개도</span>
+            <span class="text-[11px] text-slate-500">한 쪽에 면이 2개 몰려 뚜껑이 겹침</span>
+          </button>
+          <button class="btn-wrong-case p-3 rounded-xl border border-slate-200 bg-slate-50 text-left hover:bg-slate-100" data-wrong="openTop">
+            <span class="font-bold text-xs text-slate-700 block">실험 2. 뚜껑이 뚫린 전개도</span>
+            <span class="text-[11px] text-slate-500">마주보는 윗면이 없어 상자가 안 닫힘</span>
+          </button>
+        </div>
+
+        <div id="wrong-case-desc" class="bg-slate-100 p-3.5 rounded-xl text-xs text-slate-600 leading-relaxed">
+          이 전개도는 접었을 때 두 면이 같은 위치로 겹쳐지고, 반대편 한 면은 뻥 뚫리게 됩니다. '3D 뷰어에서 확인하기'를 눌러 줄을 당겨보세요!
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button id="btn-load-wrong-in-viewer" class="px-5 py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition flex items-center gap-1.5 shadow-md shadow-rose-200">
+          <span>3D 뷰어로 당겨보기</span> ➔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 모달 4: DIY 도안 인쇄 & 매뉴얼 ======================= -->
+  <div id="modal-diy" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-100 flex flex-col gap-5 animate-scaleUp">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg font-bold">🖨️</div>
+          <div>
+            <h3 class="text-lg font-black text-slate-800">입체도형 전개도 A4 도안 인쇄 센터</h3>
+            <p class="text-xs text-slate-500">도안을 A4 용지에 바로 인쇄하여 나만의 스트링 팝업 교구를 만들어보세요.</p>
+          </div>
+        </div>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- 인쇄할 도안 선택 -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs font-bold text-slate-600">출력할 도형 도안:</span>
+        <button class="btn-print-shape active px-3 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white" data-print="cube">정육면체</button>
+        <button class="btn-print-shape px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200" data-print="cuboid">직육면체</button>
+        <button class="btn-print-shape px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200" data-print="triPrism">삼각기둥</button>
+        <button class="btn-print-shape px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200" data-print="hexPyramid">육각뿔</button>
+      </div>
+
+      <!-- A4 프리뷰 캔버스/SVG 영역 (인쇄 영역) -->
+      <div id="print-area" class="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[360px] relative">
+        <div id="svg-blueprint-container" class="w-full flex items-center justify-center"></div>
+        <div class="mt-4 flex items-center gap-4 text-[11px] text-slate-500">
+          <span class="flex items-center gap-1"><span class="w-4 h-0.5 bg-slate-800 inline-block"></span> 실선: 자르는 선</span>
+          <span class="flex items-center gap-1"><span class="w-4 h-0.5 border-t border-dashed border-slate-500 inline-block"></span> 점선: 접는 선(칼선)</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full border border-red-500 bg-red-100 inline-block"></span> 빨간 원: 타공 구멍 (펀칭)</span>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center">
+        <span class="text-xs text-slate-500">권장 종이: 180g~220g 백상지/도화지</span>
+        <button id="btn-trigger-print" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-indigo-200 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          <span>브라우저로 즉시 인쇄하기</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-400">
+    <p>당기면 마법처럼 펼쳐지는 '입체도형 전개도' 웹 시뮬레이터 | 출처 영상: 요즘 엄마들이 찾는 신기한 도형 교구 (@moonshotkidz)</p>
+  </footer>
+
+  <!-- 스크립트 연결 -->
+  <script src="shapes.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
